@@ -50,18 +50,7 @@ module.exports = (app) => {
   });
 
   // Add POST /api/sensor-data route to accept sensor data and write to Firestore
-  const admin = require('firebase-admin');
-  const serviceAccount = require('./path/to/serviceAccountKey.json'); // Provide your Firebase service account key path
-
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  }
-
-  const db = admin.firestore();
-
-  app.post('/api/sensor-data', async (req, res) => {
+  app.post('/api/sensor-data', (req, res) => {
     let sensorData = req.body;
 
     try {
@@ -84,17 +73,11 @@ module.exports = (app) => {
         energy: energy + ' Wh',
       };
 
-      // Write sensor data to Firestore "readings" collection with timestamp
-      const docRef = await db.collection('readings').add({
-        ...sensorData,
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      console.log('Sensor data written with ID:', docRef.id);
-      res.status(200).json({ message: 'Sensor data received and stored successfully', id: docRef.id });
+      console.log('Received sensor data:', sensorData);
+      res.status(200).json({ message: 'Sensor data received successfully' });
     } catch (error) {
-      console.error('Error writing sensor data to Firestore:', error);
-      res.status(500).json({ error: 'Failed to store sensor data' });
+      console.error('Error processing sensor data:', error);
+      res.status(500).json({ error: 'Failed to process sensor data' });
     }
   });
 };
