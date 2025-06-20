@@ -22,24 +22,6 @@ sequelize.authenticate()
 // Sync models
 sequelize.sync();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 app.listen(port, '0.0.0.0', () => {
   console.log(`Backend server running on port ${port}`);
 });
