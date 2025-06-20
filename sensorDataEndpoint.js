@@ -49,13 +49,52 @@ module.exports = (app) => {
     res.json(sensorDataWithCost);
   });
 
-  // Add POST /api/sensor-data route to accept sensor data
-  app.post('/api/sensor-data', (req, res) => {
-    const sensorData = req.body;
+  // Add POST /api/sensor-data route to accept sensor data and write to Firestore
+  const admin = require('firebase-admin');
+  const serviceAccount = require('./path/to/serviceAccountKey.json'); // Provide your Firebase service account key path
 
-    // TODO: Process or store the sensorData as needed
-    console.log('Received sensor data:', sensorData);
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  }
 
-    res.status(200).json({ message: 'Sensor data received successfully' });
+  const db = admin.firestore();
+
+  app.post('/api/sensor-data', async (req, res) => {
+    let sensorData = req.body;
+
+    try {
+      // Clean and parse power value (remove any prefix like "LCD:P:")
+      let powerValue = sensorData.power;
+      if (typeof powerValue === 'string') {
+        powerValue = powerValue.replace(/^[^0-9.-]+/, ''); // Remove non-numeric prefix
+        powerValue = parseFloat(powerValue);
+      }
+
+      // Calculate energy (assuming power in watts and 1 hour interval, energy in Wh)
+      const energy = powerValue; // If time interval is 1 hour, energy in Wh equals power in W
+
+      // Add cleaned power, calculated energy, and units to sensorData
+      sensorData = {
+        ...sensorData,
+        voltage: sensorData.voltage + ' V',
+        current: sensorData.current + ' A',
+        power: powerValue + ' W',
+        energy: energy + ' Wh',
+      };
+
+      // Write sensor data to Firestore "readings" collection with timestamp
+      const docRef = await db.collection('readings').add({
+        ...sensorData,
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log('Sensor data written with ID:', docRef.id);
+      res.status(200).json({ message: 'Sensor data received and stored successfully', id: docRef.id });
+    } catch (error) {
+      console.error('Error writing sensor data to Firestore:', error);
+      res.status(500).json({ error: 'Failed to store sensor data' });
+    }
   });
 };
